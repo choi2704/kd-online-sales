@@ -43,6 +43,20 @@ td.center{text-align:center}
 .hidden{display:none}
 @media(max-width:1100px){.grid{grid-template-columns:repeat(2,1fr)}.summary{grid-template-columns:repeat(3,1fr)}}
 @media(max-width:650px){.grid,.summary{grid-template-columns:1fr}.wrap{padding:12px}h1{font-size:23px}}
+
+.report-window{font-family:Arial,"Noto Sans KR",sans-serif;color:#111827;padding:28px}
+.report-title{text-align:center;font-size:28px;font-weight:900;margin:0 0 6px}
+.report-period{text-align:center;color:#64748b;margin-bottom:24px}
+.report-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px}
+.report-box{border:1px solid #cbd5e1;border-radius:12px;padding:14px}
+.report-box b{display:block;color:#64748b;font-size:13px;margin-bottom:7px}
+.report-box strong{font-size:21px}
+.report-table{width:100%;border-collapse:collapse;margin-top:14px}
+.report-table th,.report-table td{border:1px solid #cbd5e1;padding:9px;text-align:right}
+.report-table th{background:#1f4e78;color:#fff}
+.report-table th:first-child,.report-table td:first-child{text-align:left}
+.report-footer{margin-top:28px;text-align:right;color:#64748b;font-size:12px}
+
 @media print{.upload-card,.input-card,.actions,.filters,.tabs,.sub,.notice,.manage-col{display:none!important}.wrap{max-width:none}.card{box-shadow:none;border:0}}
 </style>
 </head>
@@ -105,7 +119,11 @@ td.center{text-align:center}
         <option value="기타 매출">기타 매출</option>
       </select>
       <button class="green" onclick="exportCSV()">CSV 내보내기</button>
-      <button class="purple" onclick="window.print()">인쇄</button>
+      <button class="purple" onclick="saveReport('day')">일간 보고서</button>
+      <button class="purple" onclick="saveReport('week')">주간 보고서</button>
+      <button class="purple" onclick="saveReport('month')">월간 보고서</button>
+      <button class="primary" onclick="saveMonthEndReport()">월말 간단 보고</button>
+      <button class="gray" onclick="window.print()">현재 화면 인쇄</button>
       <button class="red" onclick="clearAll()">전체 자료 삭제</button>
     </div>
     <div class="summary" style="margin-top:14px">
@@ -310,6 +328,98 @@ function exportCSV(){
   const a=document.createElement("a");a.href=URL.createObjectURL(blob);
   a.download=(document.getElementById("monthFilter").value||"전체")+"_온라인매출통합.csv";a.click();URL.revokeObjectURL(a.href);
 }
+
+function parseLocalDate(s){
+  const [y,m,d]=String(s).split("-").map(Number);
+  return new Date(y,m-1,d);
+}
+function fmtDate(d){
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+}
+function reportRows(type){
+  const month=document.getElementById("monthFilter").value;
+  const all=records.filter(r=>!month||String(r.date).startsWith(month));
+  if(!all.length) return {rows:[],label:""};
+  if(type==="month") return {rows:all,label:`${month} 월간`};
+
+  const dates=all.map(r=>r.date).filter(Boolean).sort();
+  const latest=parseLocalDate(dates[dates.length-1]);
+  if(type==="day"){
+    const target=fmtDate(latest);
+    return {rows:all.filter(r=>r.date===target),label:`${target} 일간`};
+  }
+  const day=latest.getDay();
+  const diff=day===0?6:day-1;
+  const start=new Date(latest); start.setDate(latest.getDate()-diff);
+  const end=new Date(start); end.setDate(start.getDate()+6);
+  const s=fmtDate(start), e=fmtDate(end);
+  return {rows:all.filter(r=>r.date>=s&&r.date<=e),label:`${s} ~ ${e} 주간`};
+}
+function summarize(rows){
+  const sum=k=>rows.reduce((a,r)=>a+(Number(r[k])||0),0);
+  const cat=name=>rows.filter(r=>r.category===name).reduce((a,r)=>a+(Number(r.gross)||0),0);
+  return {
+    all:sum("gross"), supply:sum("supply"), vat:sum("vat"), fees:sum("fees"), paid:sum("paidAmount"),
+    store:rows.filter(r=>r.source==="스마트스토어").reduce((a,r)=>a+(Number(r.gross)||0),0),
+    manual:rows.filter(r=>r.source!=="스마트스토어").reduce((a,r)=>a+(Number(r.gross)||0),0),
+    jabara:cat("자바라"), lexan:cat("렉산"), steel:cat("스텐 방범창"), aluminum:cat("알루미늄 방범창"), etc:cat("기타")
+  };
+}
+function reportHtml(title,label,rows,simple=false){
+  const s=summarize(rows);
+  const productRows=[
+    ["자바라",s.jabara],["렉산",s.lexan],["스텐 방범창",s.steel],
+    ["알루미늄 방범창",s.aluminum],["기타",s.etc]
+  ];
+  let detail="";
+  if(!simple){
+    detail=`<h3>매출 구성</h3>
+    <table class="report-table"><thead><tr><th>구분</th><th>금액</th></tr></thead><tbody>
+    <tr><td>스마트스토어 결제</td><td>${money(s.store)}</td></tr>
+    <tr><td>별도 매출</td><td>${money(s.manual)}</td></tr>
+    <tr><td>네이버 수수료</td><td>${money(s.fees)}</td></tr>
+    <tr><td>정산·입금액</td><td>${money(s.paid)}</td></tr>
+    </tbody></table>`;
+  }
+  return `<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>${title}</title>
+  <style>${document.querySelector("style").innerHTML}</style></head><body>
+  <div class="report-window">
+    <div class="report-title">${title}</div>
+    <div class="report-period">${label}</div>
+    <div class="report-grid">
+      <div class="report-box"><b>전체 매출</b><strong>${money(s.all)}</strong></div>
+      <div class="report-box"><b>공급가액</b><strong>${money(s.supply)}</strong></div>
+      <div class="report-box"><b>부가세</b><strong>${money(s.vat)}</strong></div>
+    </div>
+    <h3>제품별 매출</h3>
+    <table class="report-table"><thead><tr><th>제품</th><th>매출금액</th></tr></thead><tbody>
+      ${productRows.map(x=>`<tr><td>${x[0]}</td><td>${money(x[1])}</td></tr>`).join("")}
+      <tr><td><b>전체 매출</b></td><td><b>${money(s.all)}</b></td></tr>
+      <tr><td><b>공급가액</b></td><td><b>${money(s.supply)}</b></td></tr>
+    </tbody></table>
+    ${detail}
+    <div class="report-footer">출력일: ${new Date().toLocaleDateString("ko-KR")}</div>
+  </div>
+  <script>window.onload=()=>setTimeout(()=>window.print(),300)<\/script>
+  </body></html>`;
+}
+function openReport(title,label,rows,simple=false){
+  if(!rows.length){alert("선택 기간에 보고할 자료가 없습니다.");return}
+  const w=window.open("","_blank");
+  if(!w){alert("팝업이 차단되었습니다. 팝업 허용 후 다시 눌러주세요.");return}
+  w.document.open(); w.document.write(reportHtml(title,label,rows,simple)); w.document.close();
+}
+function saveReport(type){
+  const r=reportRows(type);
+  const names={day:"일간 매출 보고서",week:"주간 매출 보고서",month:"월간 매출 보고서"};
+  openReport(names[type],r.label,r.rows,false);
+}
+function saveMonthEndReport(){
+  const month=document.getElementById("monthFilter").value;
+  const rows=records.filter(r=>!month||String(r.date).startsWith(month));
+  openReport("월말 매출 간단 보고",`${month} 월말`,rows,true);
+}
+
 render();
 </script>
 </body>
