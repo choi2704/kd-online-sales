@@ -75,8 +75,8 @@ td.center{text-align:center}
       <div><label>거래처명</label><input type="text" id="customer" placeholder="예: ○○건설"></div>
       <div><label>품목</label>
         <select id="category">
-          <option>자바라</option><option>렉산/차양</option><option>알루미늄 방범창</option>
-          <option>스텐 방범창</option><option>기타</option>
+          <option>자바라</option><option>렉산</option><option>스텐 방범창</option>
+          <option>알루미늄 방범창</option><option>기타</option>
         </select>
       </div>
       <div><label>공급대가(부가세 포함)</label><input type="number" id="manualGross" min="0" placeholder="예: 1100000"></div>
@@ -117,6 +117,15 @@ td.center{text-align:center}
       <div class="sum-box"><b>네이버 수수료</b><strong id="sumFees">0원</strong></div>
       <div class="sum-box"><b>정산·입금액</b><strong id="sumPaid">0원</strong></div>
     </div>
+
+    <h3 style="margin:22px 0 12px">제품별 매출</h3>
+    <div class="summary product-summary">
+      <div class="sum-box"><b>자바라</b><strong id="sumJabara">0원</strong></div>
+      <div class="sum-box"><b>렉산</b><strong id="sumLexan">0원</strong></div>
+      <div class="sum-box"><b>스텐 방범창</b><strong id="sumSteelGuard">0원</strong></div>
+      <div class="sum-box"><b>알루미늄 방범창</b><strong id="sumAlGuard">0원</strong></div>
+      <div class="sum-box"><b>기타</b><strong id="sumEtc">0원</strong></div>
+    </div>
   </div>
 
   <div class="card table-wrap">
@@ -137,6 +146,13 @@ td.center{text-align:center}
 const KEY="kdIntegratedSalesV1";
 let records=JSON.parse(localStorage.getItem(KEY)||"[]");
 let entryType="세금계산서";
+records=records.map(r=>{
+  if(r.category==="렉산/차양") r.category="렉산";
+  if(r.category==="배송비"||r.category==="방범창") r.category="기타";
+  return r;
+});
+save();
+
 
 const money=n=>(Number(n)||0).toLocaleString("ko-KR")+"원";
 const today=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`};
@@ -150,12 +166,12 @@ function setEntryType(t,btn){
 }
 function categoryFromName(name,kind){
   name=String(name||"");
-  if(kind==="배송비") return "배송비";
+  if(kind==="배송비") return "기타";
   if(name.includes("자바라")||name.includes("대문")) return "자바라";
-  if(name.includes("렉산")||name.includes("폴리카보네이트")||name.includes("캐노픽스")||name.includes("차양")) return "렉산/차양";
+  if(name.includes("렉산")||name.includes("폴리카보네이트")||name.includes("캐노픽스")||name.includes("차양")) return "렉산";
   if(name.includes("알루미늄")&&name.includes("방범창")) return "알루미늄 방범창";
   if((name.includes("스텐")||name.includes("스테인리스")||name.includes("SUS"))&&name.includes("방범창")) return "스텐 방범창";
-  if(name.includes("방범창")) return "방범창";
+  if(name.includes("방범창")) return "기타";
   return "기타";
 }
 function normDate(v){
@@ -268,6 +284,13 @@ function render(){
   document.getElementById("sumVat").textContent=money(sum("vat"));
   document.getElementById("sumFees").textContent=money(sum("fees"));
   document.getElementById("sumPaid").textContent=money(sum("paidAmount"));
+
+  const categorySum=name=>rows.filter(r=>r.category===name).reduce((a,r)=>a+(Number(r.gross)||0),0);
+  document.getElementById("sumJabara").textContent=money(categorySum("자바라"));
+  document.getElementById("sumLexan").textContent=money(categorySum("렉산"));
+  document.getElementById("sumSteelGuard").textContent=money(categorySum("스텐 방범창"));
+  document.getElementById("sumAlGuard").textContent=money(categorySum("알루미늄 방범창"));
+  document.getElementById("sumEtc").textContent=money(categorySum("기타"));
 }
 function removeRec(id){
   if(!confirm("이 매출 기록을 삭제할까요?"))return;
