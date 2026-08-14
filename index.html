@@ -308,7 +308,7 @@ td:nth-child(9),td:nth-child(10){max-width:220px;overflow:hidden;text-overflow:e
   <div class="card table-wrap">
     <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap">
       <h3 style="margin:0;font-size:16px">매출 상세내역</h3>
-      <span style="color:#64748b;font-size:12px">공급가액·부가세·수수료 상세는 상단 합계와 보고서에서 확인</span>
+      <span style="color:#64748b;font-size:12px">각 행의 수정 버튼으로 매출구분·금액·증빙정보를 바로 수정할 수 있습니다.</span>
     </div>
     <table>
       <thead>
@@ -331,7 +331,7 @@ td:nth-child(9),td:nth-child(10){max-width:220px;overflow:hidden;text-overflow:e
         <h2>매출 건별 수정</h2>
         <p>잘못 입력한 매출구분이나 거래내용을 수정할 수 있습니다.</p>
       </div>
-      <button type="button" class="edit-modal-close" onclick="closeEditModal()">✕</button>
+      <button type="button" id="editModalClose" class="edit-modal-close">✕</button>
     </div>
 
     <input type="hidden" id="editId">
@@ -397,8 +397,8 @@ td:nth-child(9),td:nth-child(10){max-width:220px;overflow:hidden;text-overflow:e
     </div>
 
     <div class="edit-actions">
-      <button type="button" class="gray" onclick="closeEditModal()">취소</button>
-      <button type="button" class="primary" onclick="saveEditRecord()">수정 저장</button>
+      <button type="button" id="editCancelBtn" class="gray">취소</button>
+      <button type="button" id="editSaveBtn" class="primary">수정 저장</button>
     </div>
   </div>
 </div>
@@ -547,8 +547,8 @@ function render(){
     <td title="${String(r.ref||"").replace(/"/g,"&quot;")}">${r.ref||""}</td>
     <td title="${String(r.memo||"").replace(/"/g,"&quot;")}">${r.memo||""}</td>
     <td class="center manage-col"><div class="manage-buttons">
-      <button class="small-btn blue" onclick="openEditRecord('${r.id}')">수정</button>
-      <button class="small-btn red" onclick="removeRec('${r.id}')">삭제</button>
+      <button class="small-btn blue edit-rec-btn" data-id="${String(r.id||"").replace(/"/g,"&quot;")}">수정</button>
+      <button class="small-btn red delete-rec-btn" data-id="${String(r.id||"").replace(/"/g,"&quot;")}">삭제</button>
     </div></td>
   </tr>`).join(""):'<tr><td class="empty" colspan="11">등록된 매출 자료가 없습니다.</td></tr>';
   const sum=k=>rows.reduce((a,r)=>a+(Number(r[k])||0),0);
@@ -570,6 +570,13 @@ function render(){
   document.getElementById("sumSteelGuard").textContent=money(categorySum("스텐 방범창"));
   document.getElementById("sumAlGuard").textContent=money(categorySum("알루미늄 방범창"));
   document.getElementById("sumEtc").textContent=money(categorySum("기타"));
+
+  tbody.querySelectorAll(".edit-rec-btn").forEach(btn=>{
+    btn.addEventListener("click",()=>openEditRecord(btn.dataset.id));
+  });
+  tbody.querySelectorAll(".delete-rec-btn").forEach(btn=>{
+    btn.addEventListener("click",()=>removeRec(btn.dataset.id));
+  });
 }
 
 function openEditRecord(id){
@@ -647,6 +654,10 @@ function saveEditRecord(){
   closeEditModal();
   render();
 }
+
+document.getElementById("editModalClose")?.addEventListener("click",closeEditModal);
+document.getElementById("editCancelBtn")?.addEventListener("click",closeEditModal);
+document.getElementById("editSaveBtn")?.addEventListener("click",saveEditRecord);
 
 document.addEventListener("keydown",e=>{
   if(e.key==="Escape") closeEditModal();
