@@ -140,6 +140,83 @@ td:nth-child(9),td:nth-child(10){max-width:220px;overflow:hidden;text-overflow:e
 .table-wrap::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:8px}
 .table-wrap::-webkit-scrollbar-track{background:#f1f5f9}
 
+
+/* ===== 매출 건별 수정 모달 ===== */
+.edit-modal{
+  position:fixed;
+  inset:0;
+  z-index:9999;
+  display:none;
+  align-items:flex-start;
+  justify-content:center;
+  padding:28px 16px;
+  overflow:auto;
+  background:rgba(15,23,42,.50);
+}
+.edit-modal.show{display:flex}
+.edit-modal-box{
+  width:min(760px,100%);
+  background:#fff;
+  border-radius:16px;
+  padding:22px;
+  box-shadow:0 24px 60px rgba(15,23,42,.25);
+}
+.edit-modal-head{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  gap:16px;
+  margin-bottom:18px;
+}
+.edit-modal-head h2{margin:0 0 5px;font-size:24px;color:#0f172a}
+.edit-modal-head p{margin:0;color:#64748b;font-size:13px}
+.edit-modal-close{
+  width:42px;height:42px;border:1px solid #cbd5e1;border-radius:9px;
+  background:#fff;font-size:20px;font-weight:900;cursor:pointer
+}
+.edit-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:14px;
+}
+.edit-grid label{
+  display:block;
+  margin-bottom:6px;
+  font-size:13px;
+  font-weight:800;
+  color:#334155;
+}
+.edit-grid input,.edit-grid select,.edit-grid textarea{
+  width:100%;
+  box-sizing:border-box;
+  border:1px solid #cbd5e1;
+  border-radius:8px;
+  padding:10px 11px;
+  font-size:14px;
+  background:#fff;
+}
+.edit-wide{grid-column:1/-1}
+.edit-actions{
+  display:flex;
+  justify-content:flex-end;
+  gap:8px;
+  margin-top:18px;
+}
+.small-btn.blue{
+  background:#2563eb;
+  color:#fff;
+}
+.manage-buttons{
+  display:flex;
+  justify-content:center;
+  gap:5px;
+  white-space:nowrap;
+}
+@media(max-width:650px){
+  .edit-grid{grid-template-columns:1fr}
+  .edit-wide{grid-column:auto}
+}
+
 </style>
 </head>
 <body>
@@ -243,6 +320,86 @@ td:nth-child(9),td:nth-child(10){max-width:220px;overflow:hidden;text-overflow:e
       </thead>
       <tbody id="tbody"></tbody>
     </table>
+  </div>
+</div>
+
+
+<div id="editModal" class="edit-modal" aria-hidden="true">
+  <div class="edit-modal-box">
+    <div class="edit-modal-head">
+      <div>
+        <h2>매출 건별 수정</h2>
+        <p>잘못 입력한 매출구분이나 거래내용을 수정할 수 있습니다.</p>
+      </div>
+      <button type="button" class="edit-modal-close" onclick="closeEditModal()">✕</button>
+    </div>
+
+    <input type="hidden" id="editId">
+
+    <div class="edit-grid">
+      <div>
+        <label>날짜</label>
+        <input type="date" id="editDate">
+      </div>
+      <div>
+        <label>매출구분</label>
+        <select id="editSource">
+          <option value="스마트스토어">스마트스토어</option>
+          <option value="세금계산서">세금계산서</option>
+          <option value="현금영수증">현금영수증</option>
+          <option value="별도 카드결제">별도 카드결제</option>
+          <option value="기타 매출">기타 매출</option>
+        </select>
+      </div>
+      <div>
+        <label>거래처</label>
+        <input type="text" id="editCustomer">
+      </div>
+      <div>
+        <label>품목</label>
+        <select id="editCategory">
+          <option>자바라</option>
+          <option>렉산</option>
+          <option>스텐 방범창</option>
+          <option>알루미늄 방범창</option>
+          <option>기타</option>
+        </select>
+      </div>
+      <div>
+        <label>매출금액</label>
+        <input type="number" id="editGross" min="0">
+      </div>
+      <div>
+        <label>공급가액</label>
+        <input type="number" id="editSupply" min="0">
+      </div>
+      <div>
+        <label>부가세</label>
+        <input type="number" id="editVat" min="0">
+      </div>
+      <div>
+        <label>입금 상태</label>
+        <select id="editPaidStatus">
+          <option value="입금">입금</option>
+          <option value="미입금">미입금</option>
+          <option value="정산">정산</option>
+          <option value="정산대기">정산대기</option>
+        </select>
+      </div>
+      <div class="edit-wide">
+        <label>주문/증빙번호</label>
+        <input type="text" id="editRef">
+      </div>
+      <div class="edit-wide">
+        <label>비고</label>
+        <textarea id="editMemo" rows="3"></textarea>
+      </div>
+    </div>
+
+    <div class="edit-actions">
+      <button type="button" class="gray" onclick="closeEditModal()">취소</button>
+      <button type="button" class="primary" onclick="saveEditRecord()">수정 저장</button>
+    </div>
   </div>
 </div>
 
@@ -389,7 +546,10 @@ function render(){
     <td>${r.paidStatus||""}</td>
     <td title="${String(r.ref||"").replace(/"/g,"&quot;")}">${r.ref||""}</td>
     <td title="${String(r.memo||"").replace(/"/g,"&quot;")}">${r.memo||""}</td>
-    <td class="center manage-col"><button class="small-btn red" onclick="removeRec('${r.id}')">삭제</button></td>
+    <td class="center manage-col"><div class="manage-buttons">
+      <button class="small-btn blue" onclick="openEditRecord('${r.id}')">수정</button>
+      <button class="small-btn red" onclick="removeRec('${r.id}')">삭제</button>
+    </div></td>
   </tr>`).join(""):'<tr><td class="empty" colspan="11">등록된 매출 자료가 없습니다.</td></tr>';
   const sum=k=>rows.reduce((a,r)=>a+(Number(r[k])||0),0);
   document.getElementById("sumAll").textContent=money(sum("gross"));
@@ -411,6 +571,91 @@ function render(){
   document.getElementById("sumAlGuard").textContent=money(categorySum("알루미늄 방범창"));
   document.getElementById("sumEtc").textContent=money(categorySum("기타"));
 }
+
+function openEditRecord(id){
+  const r=records.find(x=>x.id===id);
+  if(!r){alert("수정할 매출 기록을 찾지 못했습니다.");return}
+
+  document.getElementById("editId").value=r.id;
+  document.getElementById("editDate").value=r.date||"";
+  document.getElementById("editSource").value=r.source||"기타 매출";
+  document.getElementById("editCustomer").value=r.customer||"";
+  document.getElementById("editCategory").value=r.category||"기타";
+  document.getElementById("editGross").value=Number(r.gross)||0;
+  document.getElementById("editSupply").value=Number(r.supply)||0;
+  document.getElementById("editVat").value=Number(r.vat)||0;
+  document.getElementById("editPaidStatus").value=r.paidStatus||"입금";
+  document.getElementById("editRef").value=r.ref||"";
+  document.getElementById("editMemo").value=r.memo||"";
+
+  const modal=document.getElementById("editModal");
+  modal.classList.add("show");
+  modal.setAttribute("aria-hidden","false");
+}
+
+function closeEditModal(){
+  const modal=document.getElementById("editModal");
+  modal.classList.remove("show");
+  modal.setAttribute("aria-hidden","true");
+}
+
+function saveEditRecord(){
+  const id=document.getElementById("editId").value;
+  const idx=records.findIndex(x=>x.id===id);
+  if(idx<0){alert("수정할 매출 기록을 찾지 못했습니다.");return}
+
+  const gross=Number(document.getElementById("editGross").value)||0;
+  let supply=Number(document.getElementById("editSupply").value)||0;
+  let vat=Number(document.getElementById("editVat").value)||0;
+
+  if(gross>0 && supply<=0 && vat<=0){
+    supply=Math.round(gross/1.1);
+    vat=gross-supply;
+  }else if(gross>0 && supply>0 && vat<=0){
+    vat=gross-supply;
+  }else if(gross>0 && vat>0 && supply<=0){
+    supply=gross-vat;
+  }
+
+  const source=document.getElementById("editSource").value;
+  const paidStatus=document.getElementById("editPaidStatus").value;
+  const old=records[idx];
+
+  let paidAmount=0;
+  if(source==="스마트스토어"){
+    paidAmount=Math.max(0,gross-(Number(old.fees)||0));
+  }else{
+    paidAmount=paidStatus==="입금" ? gross : 0;
+  }
+
+  records[idx]={
+    ...old,
+    date:document.getElementById("editDate").value,
+    source,
+    customer:document.getElementById("editCustomer").value.trim(),
+    category:document.getElementById("editCategory").value,
+    gross,
+    supply,
+    vat,
+    paidStatus,
+    paidAmount,
+    ref:document.getElementById("editRef").value.trim(),
+    memo:document.getElementById("editMemo").value.trim()
+  };
+
+  save();
+  closeEditModal();
+  render();
+}
+
+document.addEventListener("keydown",e=>{
+  if(e.key==="Escape") closeEditModal();
+});
+document.addEventListener("click",e=>{
+  const modal=document.getElementById("editModal");
+  if(e.target===modal) closeEditModal();
+});
+
 function removeRec(id){
   if(!confirm("이 매출 기록을 삭제할까요?"))return;
   records=records.filter(r=>r.id!==id);save();render();
