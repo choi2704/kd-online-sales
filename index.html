@@ -142,6 +142,47 @@ td:nth-child(9),td:nth-child(10){max-width:220px;overflow:hidden;text-overflow:e
 
 
 
+
+/* ===== 매출 상세 검색 ===== */
+.sales-search-box{
+  display:flex;
+  align-items:center;
+  gap:7px;
+  min-width:330px;
+  padding:5px 7px 5px 11px;
+  border:2px solid #b8cad7;
+  border-radius:10px;
+  background:#fff;
+}
+.sales-search-box span{
+  font-size:18px;
+}
+.sales-search-box input{
+  flex:1;
+  min-width:180px;
+  border:0 !important;
+  outline:0 !important;
+  background:transparent !important;
+  padding:8px 4px !important;
+  font-size:15px !important;
+  font-weight:700;
+}
+.sales-search-box button{
+  border:0;
+  border-radius:7px;
+  background:#e8eef3;
+  color:#334155;
+  padding:8px 10px;
+  font-size:12px;
+  font-weight:800;
+  cursor:pointer;
+}
+.sales-search-box button:hover{background:#dce6ed}
+@media(max-width:760px){
+  .sales-search-box{width:100%;min-width:0}
+  .sales-search-box input{min-width:0}
+}
+
 </style>
 </head>
 <body>
@@ -202,6 +243,11 @@ td:nth-child(9),td:nth-child(10){max-width:220px;overflow:hidden;text-overflow:e
         <option value="별도 카드결제">별도 카드결제</option>
         <option value="기타 매출">기타 매출</option>
       </select>
+      <div class="sales-search-box">
+        <span>🔎</span>
+        <input type="search" id="salesSearch" placeholder="고객명 · 주문내역 검색" oninput="render()">
+        <button type="button" onclick="clearSalesSearch()">초기화</button>
+      </div>
       <button class="green" onclick="exportCSV()">CSV 내보내기</button>
       <button class="purple" onclick="saveReport('day')">일간 보고서</button>
       <button class="purple" onclick="saveReport('week')">주간 보고서</button>
@@ -233,7 +279,7 @@ td:nth-child(9),td:nth-child(10){max-width:220px;overflow:hidden;text-overflow:e
   <div class="card table-wrap">
     <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap">
       <h3 style="margin:0;font-size:16px">매출 상세내역</h3>
-      <span style="color:#64748b;font-size:12px">각 행의 수정 버튼으로 매출구분·금액·증빙정보를 바로 수정할 수 있습니다.</span>
+      <span style="color:#64748b;font-size:12px">고객명이나 주문내역으로 검색할 수 있고, 각 행의 수정 버튼으로 내용을 바로 수정할 수 있습니다.</span>
     </div>
     <table>
       <thead>
@@ -384,7 +430,33 @@ function clearManual(){
 function filtered(){
   const m=document.getElementById("monthFilter").value;
   const s=document.getElementById("sourceFilter").value;
-  return records.filter(r=>(!m||String(r.date).startsWith(m))&&(!s||r.source===s));
+  const q=(document.getElementById("salesSearch")?.value||"").trim().toLowerCase();
+
+  return records.filter(r=>{
+    const monthOk=!m||String(r.date).startsWith(m);
+    const sourceOk=!s||r.source===s;
+
+    const searchText=[
+      r.customer,
+      r.category,
+      r.ref,
+      r.memo,
+      r.source,
+      r.date
+    ].filter(Boolean).join(" ").toLowerCase();
+
+    const searchOk=!q||searchText.includes(q);
+    return monthOk&&sourceOk&&searchOk;
+  });
+}
+
+function clearSalesSearch(){
+  const el=document.getElementById("salesSearch");
+  if(el){
+    el.value="";
+    el.focus();
+  }
+  render();
 }
 function render(){
   const rows=filtered();
