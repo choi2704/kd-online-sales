@@ -214,7 +214,7 @@ td:nth-child(9),td:nth-child(10){max-width:220px;overflow:hidden;text-overflow:e
       <div><label>거래처명</label><input type="text" id="customer" placeholder="예: ○○건설"></div>
       <div><label>품목</label>
         <select id="category">
-          <option>자바라</option><option>렉산</option><option>스텐 방범창</option>
+          <option>자바라</option><option>자바라 방범창</option><option>렉산</option><option>스텐 방범창</option>
           <option>알루미늄 방범창</option><option>기타</option>
         </select>
       </div>
@@ -269,6 +269,7 @@ td:nth-child(9),td:nth-child(10){max-width:220px;overflow:hidden;text-overflow:e
     <h3 style="margin:22px 0 12px">제품별 매출</h3>
     <div class="summary product-summary">
       <div class="sum-box"><b>자바라</b><strong id="sumJabara">0원</strong></div>
+      <div class="sum-box"><b>자바라 방범창</b><strong id="sumJabaraGuard">0원</strong></div>
       <div class="sum-box"><b>렉산</b><strong id="sumLexan">0원</strong></div>
       <div class="sum-box"><b>스텐 방범창</b><strong id="sumSteelGuard">0원</strong></div>
       <div class="sum-box"><b>알루미늄 방범창</b><strong id="sumAlGuard">0원</strong></div>
@@ -331,6 +332,7 @@ function setEntryType(t,btn){
 function categoryFromName(name,kind){
   name=String(name||"");
   if(kind==="배송비") return "기타";
+  if(name.includes("자바라")&&name.includes("방범창")) return "자바라 방범창";
   if(name.includes("자바라")||name.includes("대문")) return "자바라";
   if(name.includes("렉산")||name.includes("폴리카보네이트")||name.includes("캐노픽스")||name.includes("차양")) return "렉산";
   if(name.includes("알루미늄")&&name.includes("방범창")) return "알루미늄 방범창";
@@ -494,6 +496,7 @@ function render(){
 
   const categorySum=name=>rows.filter(r=>r.category===name).reduce((a,r)=>a+(Number(r.gross)||0),0);
   document.getElementById("sumJabara").textContent=money(categorySum("자바라"));
+  document.getElementById("sumJabaraGuard").textContent=money(categorySum("자바라 방범창"));
   document.getElementById("sumLexan").textContent=money(categorySum("렉산"));
   document.getElementById("sumSteelGuard").textContent=money(categorySum("스텐 방범창"));
   document.getElementById("sumAlGuard").textContent=money(categorySum("알루미늄 방범창"));
@@ -527,7 +530,7 @@ function openEditRecord(id){
   const sourceOptions=["스마트스토어","세금계산서","현금영수증","별도 카드결제","기타 매출"]
     .map(v=>`<option value="${escHtml(v)}"${r.source===v?" selected":""}>${escHtml(v)}</option>`).join("");
 
-  const categoryOptions=["자바라","렉산","스텐 방범창","알루미늄 방범창","기타"]
+  const categoryOptions=["자바라","자바라 방범창","렉산","스텐 방범창","알루미늄 방범창","기타"]
     .map(v=>`<option value="${escHtml(v)}"${r.category===v?" selected":""}>${escHtml(v)}</option>`).join("");
 
   const statusOptions=["입금","미입금","정산","정산대기"]
@@ -750,7 +753,7 @@ function summarize(rows){
     all:sum("gross"), supply:sum("supply"), vat:sum("vat"), fees:activeFees, paid,
     store,
     manual,
-    jabara:cat("자바라"), lexan:cat("렉산"), steel:cat("스텐 방범창"), aluminum:cat("알루미늄 방범창"), etc:cat("기타")
+    jabara:cat("자바라"), jabaraGuard:cat("자바라 방범창"), lexan:cat("렉산"), steel:cat("스텐 방범창"), aluminum:cat("알루미늄 방범창"), etc:cat("기타")
   };
 }
 
@@ -790,7 +793,7 @@ body{margin:0;background:#fff}
 function reportHtml(title,label,rows,simple=false){
   const s=summarize(rows);
   const productRows=[
-    ["자바라",s.jabara],["렉산",s.lexan],["스텐 방범창",s.steel],
+    ["자바라",s.jabara],["자바라 방범창",s.jabaraGuard],["렉산",s.lexan],["스텐 방범창",s.steel],
     ["알루미늄 방범창",s.aluminum],["기타",s.etc]
   ];
   let detail="";
